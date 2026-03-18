@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
+from dotenv import load_dotenv
 import streamlit as st
 
 from agent_core import analyze_code_snippet
+
+load_dotenv()
 
 st.set_page_config(page_title="PR Review AI Agent", layout="wide")
 st.title("🔍 PR Review AI Agent")

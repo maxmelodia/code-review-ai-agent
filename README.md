@@ -50,6 +50,26 @@ streamlit run app.py
 
 Cole um trecho no campo de texto ou envie um arquivo. Ajuste o caminho do `blueprint.md` na barra lateral caso personalize as regras.
 
+## Configurando a API da OpenAI
+
+1. Crie uma conta (ou faça login) em [https://platform.openai.com/](https://platform.openai.com/) e gere uma chave em **Dashboard ▸ API keys**.
+2. Defina a variável de ambiente antes de iniciar o Streamlit:
+
+```pwsh
+setx OPENAI_API_KEY "sk-seu-token"
+$Env:OPENAI_API_KEY = "sk-seu-token"  # mantém na sessão atual
+```
+
+Em sistemas Unix/macOS use:
+
+```bash
+export OPENAI_API_KEY="sk-seu-token"
+```
+
+3. Opcionalmente, crie um arquivo `.env` na raiz contendo `OPENAI_API_KEY=sk-seu-token`. O app já executa `python-dotenv` automaticamente (`app.py` e `agent_core.py` chamam `load_dotenv()`), então as variáveis ficam disponíveis assim que você iniciar o Streamlit ou qualquer script que importe esses módulos.
+
+A aplicação não envia chamadas à OpenAI por padrão, mas a variável já fica disponível para futuras integrações no `agent_core.py` ou em novos serviços.
+
 ## Governança
 
 - `blueprint.md` define missão, formato da resposta e limites (máx. 5 achados, severidades válidas e categorias permitidas).

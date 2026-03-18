@@ -5,7 +5,12 @@ from dataclasses import dataclass, asdict
 from typing import Dict, Iterable, List, Optional
 import re
 
+from dotenv import load_dotenv
+
 from validators import load_blueprint_rules, summarize_governance
+
+
+load_dotenv()
 
 
 @dataclass
