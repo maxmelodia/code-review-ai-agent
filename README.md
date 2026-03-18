@@ -2,37 +2,72 @@
 
 Projeto acadêmico da disciplina **IA Generativa para Engenharia de Software**.
 
-O objetivo é desenvolver um agente de IA capaz de analisar trechos de código (simulando Pull Requests) e fornecer sugestões de melhoria, identificação de problemas e boas práticas.
+O objetivo é desenvolver um agente de IA capaz de analisar trechos de código (simulando um Pull Request) e fornecer sugestões de melhoria, identificação de problemas e boas práticas.
 
-## Proposta
+## Funcionalidades
 
-O sistema recebe um código como entrada e utiliza um modelo de IA para:
+- **Análise heurística** de riscos comuns (TODO/FIXME pendentes, `eval/exec`, secrets hardcoded, `except` genérico, funções gigantes, `print` de debug).
+- **Governança configurável** via `blueprint.md`, limitando quantidade de achados, severidades válidas e categorias permitidas.
+- **Interface Streamlit** (`app.py`) para colar ou fazer upload de arquivos e visualizar os achados com métricas e próximos passos.
+- **Exportação em JSON** do relatório completo para integração futura com pipelines de CI.
 
-- identificar possíveis bugs  
-- apontar problemas de segurança  
-- sugerir melhorias de código  
-- aplicar boas práticas de desenvolvimento  
+## Arquitetura
 
-Além disso, o agente terá um mecanismo de governança baseado em um arquivo `blueprint.md`, que define regras de comportamento e validação das respostas.
-
-## Estrutura inicial
-
+```
 pr-review-ai-agent
-│
-├── app.py
-├── agent_core.py
-├── validators.py
-├── blueprint.md
+├── app.py            # Front-end em Streamlit
+├── agent_core.py     # Heurísticas e agregação das respostas
+├── validators.py     # Carrega/valida regras definidas no blueprint
+├── blueprint.md      # Regras de governança e template de resposta
 ├── requirements.txt
 └── README.md
+```
 
-## Tecnologias previstas
+- `agent_core.py` expõe `analyze_code_snippet` (um arquivo) e `analyze_pull_request` (vários arquivos) retornando um `AnalysisReport` com resumo, achados, próximos passos e estado de governança.
+- `validators.py` interpreta os metadados do blueprint e garante que os achados respeitem os limites definidos (categorias, severidade, quantidade máxima).
+- `app.py` encapsula o fluxo em uma UI: entrada de código, chamada ao core, renderização de métricas, achados e governança.
 
-- Python  
-- Streamlit  
-- API de IA (OpenAI ou similar)  
-- Docker / Docker Compose  
+## Como executar
 
-## Status
+1. Crie e ative um ambiente virtual (opcional mas recomendado):
 
-Em desenvolvimento.
+```pwsh
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+2. Instale as dependências:
+
+```pwsh
+pip install -r requirements.txt
+```
+
+3. Rode a interface Streamlit:
+
+```pwsh
+streamlit run app.py
+```
+
+Cole um trecho no campo de texto ou envie um arquivo. Ajuste o caminho do `blueprint.md` na barra lateral caso personalize as regras.
+
+## Governança
+
+- `blueprint.md` define missão, formato da resposta e limites (máx. 5 achados, severidades válidas e categorias permitidas).
+- Os metadados no topo (`<!-- blueprint:... -->`) são lidos automaticamente pelos validadores para sincronizar regras sem alterar código.
+- As respostas exibem o status de governança e eventuais pendências (ex.: número de achados acima do limite, severidade inválida etc.).
+
+## Testes rápidos
+
+O projeto ainda usa heurísticas simples, mas já é possível validar a integridade dos módulos com:
+
+```pwsh
+pytest
+```
+
+> Caso ainda não existam testes personalizados, o comando conferirá se os arquivos podem ser importados corretamente.
+
+## Próximos passos
+
+- Integrar um LLM (OpenAI ou similar) para gerar insights mais sofisticados usando o `AnalysisReport` como contexto fixo.
+- Adicionar Docker/Docker Compose para facilitar execuções em laboratório.
+- Conectar a ferramenta a um repositório Git real para analisar diffs automaticamente.
