@@ -430,6 +430,31 @@ def _detect_string_format_bugs(code: str, **_: str) -> List[Finding]:
     return []
 
 
+def _detect_missing_imports(code: str, **_: str) -> List[Finding]:
+    lines = code.splitlines()
+    full = "\n".join(lines)
+    # Common modules used without import
+    checks = {
+        "logging": (r"\blogging\.", r"import logging"),
+        "re": (r"\bre\.(search|match|sub|compile|findall)\b", r"import re"),
+        "sys": (r"\bsys\.(exit|argv|path|stdout)\b", r"import sys"),
+        "math": (r"\bmath\.(sqrt|ceil|floor|log)\b", r"import math"),
+    }
+    for mod, (usage_pat, import_pat) in checks.items():
+        if re.search(usage_pat, full) and not re.search(import_pat, full):
+            for i, line in enumerate(lines, 1):
+                if re.search(usage_pat, line):
+                    return [Finding(
+                        category="bug-risk", severity="High",
+                        description=f"Módulo `{mod}` usado mas não importado — causa NameError em runtime.",
+                        recommendation=f"Adicionar `import {mod}` no topo do arquivo.",
+                        line=i,
+                        code_snippet=line.strip(),
+                        fix_snippet=f"import {mod}\n\n{line.strip()}",
+                    )]
+    return []
+
+
 _HEURISTICS = [
     _detect_todo,
     _detect_hardcoded_secret,
@@ -445,6 +470,7 @@ _HEURISTICS = [
     _detect_infinite_loop,
     _detect_none_return_usage,
     _detect_string_format_bugs,
+    _detect_missing_imports,
 ]
 
 
