@@ -61,3 +61,19 @@ Categorias aceitas: `bug-risk`, `security`, `best-practice`. Cada problema deve 
 
 ## Próximos passos sugeridos
 - Recomendação mínima: indicar como validar as correções (por exemplo, `pytest`, `bandit`, linters ou revisão manual). Escolha ferramentas específicas conforme o tipo de achado.
+
+## Formato de saída (JSON)
+Responda EXCLUSIVAMENTE com um JSON válido no formato abaixo. Não inclua texto fora do JSON.
+```json
+{
+  "findings": [
+    {
+      "category": "bug-risk | security | best-practice",
+      "severity": "Critical | High | Medium | Low | Info",
+      "description": "O que está errado, onde e por quê",
+      "recommendation": "Ação concreta para corrigir"
+    }
+  ]
+}
+```
+Se não houver achados, retorne `{"findings": []}`.

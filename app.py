@@ -46,7 +46,10 @@ if run_button:
         except FileNotFoundError as exc:
             st.error(f"Não foi possível carregar o blueprint: {exc}")
         else:
+            from agent_core import _llm_error
             st.success(report.summary)
+            if _llm_error:
+                st.warning(f"⚠️ LLM indisponível (apenas heurísticas foram usadas): {_llm_error}")
 
             col1, col2 = st.columns(2)
             with col1:
@@ -61,8 +64,15 @@ if run_button:
             st.subheader("Achados")
             for finding in report.findings:
                 severity_tag = f"{finding.severity} / {finding.category}"
-                st.markdown(f"**{severity_tag}** — {finding.description}")
+                line_info = f" (linha {finding.line})" if finding.line else ""
+                st.markdown(f"**{severity_tag}**{line_info} — {finding.description}")
                 st.markdown(f"💡 {finding.recommendation}")
+                if finding.code_snippet:
+                    st.markdown("❌ **Código problemático:**")
+                    st.code(finding.code_snippet, language=language)
+                if finding.fix_snippet:
+                    st.markdown("✅ **Correção sugerida:**")
+                    st.code(finding.fix_snippet, language=language)
                 if finding.reference:
                     st.caption(f"Referência: {finding.reference}")
                 st.markdown("---")
