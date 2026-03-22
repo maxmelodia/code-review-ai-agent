@@ -90,42 +90,81 @@ def _load_blueprint_text(path: str) -> str:
     return bp.read_text(encoding="utf-8") if bp.exists() else ""
 
 
-def _call_llm(code: str, language: str, blueprint_text: str) -> List[dict]:
-    global _llm_error
-    _llm_error = None
+_active_agent: Optional[str] = None          # nome do agente que respondeu
+
+
+def _build_prompt(code: str, language: str, blueprint_text: str) -> str:
+    return f"{blueprint_text}\n\nLinguagem: {language}\n\n```\n{code}\n```"
+
+
+def _call_gemini(prompt: str) -> List[dict]:
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        return []
+        raise RuntimeError("GEMINI_API_KEY não configurada")
+    from google import genai
+    client = genai.Client(api_key=api_key)
+    for attempt in range(3):
+        try:
+            resp = client.models.generate_content(
+                model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
+                contents=prompt,
+                config={"response_mime_type": "application/json", "temperature": 0.2},
+            )
+            return json.loads(resp.text).get("findings", [])
+        except Exception as exc:
+            if "429" in str(exc) and attempt < 2:
+                time.sleep(2 ** attempt)
+                continue
+            raise
+
+
+def _call_openai(prompt: str) -> List[dict]:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY não configurada")
+    from openai import OpenAI
+    client = OpenAI(api_key=api_key)
+    resp = client.chat.completions.create(
+        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        messages=[
+            {"role": "system", "content": "Responda APENAS com JSON contendo a chave 'findings'."},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.2,
+        response_format={"type": "json_object"},
+    )
+    return json.loads(resp.choices[0].message.content).get("findings", [])
+
+
+# Ordem de prioridade dos agentes LLM
+_LLM_AGENTS = [
+    ("Gemini", _call_gemini),
+    ("OpenAI", _call_openai),
+]
+
+
+def _call_llm(code: str, language: str, blueprint_text: str) -> List[dict]:
+    global _llm_error, _active_agent
+    _llm_error = None
+    _active_agent = None
 
     cache_key = hashlib.md5(f"{language}:{code}".encode()).hexdigest()
     if cache_key in _llm_cache:
         return _llm_cache[cache_key]
 
-    try:
-        from google import genai
-        client = genai.Client(api_key=api_key)
+    prompt = _build_prompt(code, language, blueprint_text)
+    errors = []
+    for name, call_fn in _LLM_AGENTS:
+        try:
+            result = call_fn(prompt)
+            _llm_cache[cache_key] = result
+            _active_agent = name
+            return result
+        except Exception as exc:
+            errors.append(f"{name}: {exc}")
 
-        last_exc = None
-        for attempt in range(3):
-            try:
-                resp = client.models.generate_content(
-                    model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
-                    contents=f"{blueprint_text}\n\nLinguagem: {language}\n\n```\n{code}\n```",
-                    config={"response_mime_type": "application/json", "temperature": 0.2},
-                )
-                data = json.loads(resp.text)
-                result = data.get("findings", [])
-                _llm_cache[cache_key] = result
-                return result
-            except Exception as exc:
-                last_exc = exc
-                if "429" in str(exc) and attempt < 2:
-                    time.sleep(2 ** attempt)
-                    continue
-                raise
-    except Exception as exc:
-        _llm_error = str(exc)[:200]
-        return []
+    _llm_error = " | ".join(str(e)[:100] for e in errors) if errors else "Nenhuma API key configurada"
+    return []
 
 
 def _sanitize_llm_findings(raw: List[dict], rules) -> List[Finding]:

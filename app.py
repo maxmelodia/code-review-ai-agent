@@ -6,7 +6,7 @@ import json
 from dotenv import load_dotenv
 import streamlit as st
 
-from agent_core import analyze_code_snippet, analyze_pull_request, _llm_error, _SEVERITY_ORDER
+from agent_core import analyze_code_snippet, analyze_pull_request, _llm_error, _active_agent, _SEVERITY_ORDER
 
 load_dotenv()
 
@@ -37,7 +37,7 @@ with st.sidebar:
 # --- Input ---
 if mode == "Arquivo único":
     code_input = st.text_area("Código", height=300, placeholder="Cole aqui o trecho...")
-    file_upload = st.file_uploader("Ou envie um arquivo", type=["py", "js", "ts", "go"])
+    file_upload = st.file_uploader("Ou envie um arquivo", type=["py", "js", "ts", "go", "yaml"])
     if file_upload is not None and not code_input:
         code_input = file_upload.read().decode("utf-8")
         file_path = file_upload.name
@@ -45,7 +45,7 @@ if mode == "Arquivo único":
         language = _LANG_EXT.get(ext, language)
 else:
     code_input = ""
-    file_uploads = st.file_uploader("Envie os arquivos do PR", type=["py", "js", "ts", "go"],
+    file_uploads = st.file_uploader("Envie os arquivos do PR", type=["py", "js", "ts", "go", "yaml"],
                                     accept_multiple_files=True)
 
 run_button = st.button("🚀 Analisar", type="primary")
@@ -67,6 +67,8 @@ if run_button:
 
                 # Inline render to avoid function-before-definition issue
                 st.success(report.summary)
+                if _active_agent:
+                    st.info(f"🤖 Agente ativo: **{_active_agent}**")
                 if _llm_error:
                     st.warning(f"⚠️ LLM indisponível (heurísticas apenas): {_llm_error}")
 
@@ -155,6 +157,8 @@ if run_button:
                 st.error(f"Blueprint não encontrado: {exc}")
             else:
                 st.success(result["summary"])
+                if _active_agent:
+                    st.info(f"🤖 Agente ativo: **{_active_agent}**")
                 if _llm_error:
                     st.warning(f"⚠️ LLM indisponível (heurísticas apenas): {_llm_error}")
 
