@@ -1,0 +1,13 @@
+services:
+  pr-review-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pr-review-agent
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    volumes:
+      - ./blueprint.md:/app/blueprint.md:ro
+    restart: unless-stopped
