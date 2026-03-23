@@ -1,93 +1,237 @@
 # PR Review AI Agent
 
-Projeto acadêmico da disciplina **IA Generativa para Engenharia de Software**.
+Projeto acadêmico da disciplina **IA Generativa para Engenharia de Software**. A aplicação oferece uma interface em Streamlit para revisar trechos de código ou um conjunto de arquivos simulando um Pull Request, combinando heurísticas locais com apoio opcional de LLM.
 
-O objetivo é desenvolver um agente de IA capaz de analisar trechos de código (simulando um Pull Request) e fornecer sugestões de melhoria, identificação de problemas e boas práticas.
+## O que o projeto faz
 
-## Funcionalidades
-
-- **Análise heurística** de riscos comuns (TODO/FIXME pendentes, `eval/exec`, secrets hardcoded, `except` genérico, funções gigantes, `print` de debug).
-- **Governança configurável** via `blueprint.md`, limitando quantidade de achados, severidades válidas e categorias permitidas.
-- **Interface Streamlit** (`app.py`) para colar ou fazer upload de arquivos e visualizar os achados com métricas e próximos passos.
-- **Exportação em JSON** do relatório completo para integração futura com pipelines de CI.
+- Analisa código de **arquivo único** ou de **múltiplos arquivos**.
+- Detecta problemas comuns com heurísticas locais.
+- Tenta complementar a análise com **Gemini** e, se não estiver disponível, faz fallback para **OpenAI**.
+- Aplica regras de governança definidas em [`blueprint.md`](/home/maxmelodia/PUC/IA/code-review-ai-agent/blueprint.md).
+- Exibe o relatório na UI com:
+  - resumo da análise
+  - achados com severidade, categoria, linha e sugestão
+  - estatísticas básicas
+  - próximos passos
+  - status de governança
+  - exportação em JSON e Markdown
 
 ## Arquitetura
 
-```
+```text
 pr-review-ai-agent
-├── app.py            # Front-end em Streamlit
-├── agent_core.py     # Heurísticas e agregação das respostas
-├── validators.py     # Carrega/valida regras definidas no blueprint
-├── blueprint.md      # Regras de governança e template de resposta
+├── app.py                 # Interface Streamlit
+├── agent_core.py          # Heurísticas, integração com LLM e agregação do relatório
+├── validators.py          # Leitura e validação das regras do blueprint
+├── blueprint.md           # Contrato de governança e instruções de saída
+├── tests/test_agent_core.py
 ├── requirements.txt
-└── README.md
+└── Dockerfile
 ```
 
-- `agent_core.py` expõe `analyze_code_snippet` (um arquivo) e `analyze_pull_request` (vários arquivos) retornando um `AnalysisReport` com resumo, achados, próximos passos e estado de governança.
-- `validators.py` interpreta os metadados do blueprint e garante que os achados respeitem os limites definidos (categorias, severidade, quantidade máxima).
-- `app.py` encapsula o fluxo em uma UI: entrada de código, chamada ao core, renderização de métricas, achados e governança.
+## Tecnologias
 
-## Como executar
+- Python 3
+- Streamlit
+- python-dotenv
+- OpenAI SDK
+- Google GenAI SDK
+- Pytest
 
-1. Crie e ative um ambiente virtual (opcional mas recomendado):
+## Como rodar com Docker
 
-```pwsh
+Esse é o fluxo mais direto para executar o projeto:
+
+```bash
+docker build -t pr-review-agent .
+docker run -p 8501:8501 --env-file .env pr-review-agent
+```
+
+Depois disso, acesse:
+
+```text
+http://localhost:8501
+```
+
+### Observações sobre o Docker
+
+- O container expõe a porta `8501`.
+- O comando de inicialização já está definido no [`Dockerfile`](/home/maxmelodia/PUC/IA/code-review-ai-agent/Dockerfile): o app sobe com `streamlit run app.py --server.port=8501 --server.address=0.0.0.0`.
+- O arquivo `.env` é carregado no container via `--env-file .env`.
+
+## Como rodar localmente
+
+1. Crie e ative um ambiente virtual:
+
+```bash
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+source .venv/bin/activate
 ```
 
 2. Instale as dependências:
 
-```pwsh
+```bash
 pip install -r requirements.txt
 ```
 
-3. Rode a interface Streamlit:
-
-```pwsh
-streamlit run app.py
-```
-
-Cole um trecho no campo de texto ou envie um arquivo. Ajuste o caminho do `blueprint.md` na barra lateral caso personalize as regras.
-
-## Configurando a variável `API_KEY`
-
-1. Gere a chave no provedor desejado (ex.: [OpenAI](https://platform.openai.com/) ou [Gemini](https://aistudio.google.com/app/apikey)).
-2. Defina a variável de ambiente antes de iniciar o Streamlit:
-
-```pwsh
-setx API_KEY "seu-token"
-$Env:API_KEY = "seu-token"  # mantém na sessão atual
-```
-
-Em sistemas Unix/macOS use:
+3. Execute a aplicação:
 
 ```bash
-export API_KEY="seu-token"
+python -m streamlit run app.py
 ```
 
-3. Opcionalmente, crie um arquivo `.env` na raiz contendo `API_KEY=seu-token`. O app já executa `python-dotenv` automaticamente (`app.py` e `agent_core.py` chamam `load_dotenv()`), então as variáveis ficam disponíveis assim que você iniciar o Streamlit ou qualquer script que importe esses módulos.
+Se quiser fixar host e porta:
 
-A aplicação não envia chamadas à API por padrão, mas a variável já fica disponível para futuras integrações no `agent_core.py` ou em novos serviços.
+```bash
+python -m streamlit run app.py --server.port=8501 --server.address=0.0.0.0
+```
 
-## Governança
+## Variáveis de ambiente
 
-- `blueprint.md` define missão, formato da resposta e limites (máx. 5 achados, severidades válidas e categorias permitidas).
-- Os metadados no topo (`<!-- blueprint:... -->`) são lidos automaticamente pelos validadores para sincronizar regras sem alterar código.
-- As respostas exibem o status de governança e eventuais pendências (ex.: número de achados acima do limite, severidade inválida etc.).
+O projeto usa `load_dotenv()`, então um arquivo `.env` na raiz já é suficiente para disponibilizar as chaves para a aplicação.
 
-## Testes rápidos
+Variáveis suportadas pelo código:
 
-O projeto ainda usa heurísticas simples, mas já é possível validar a integridade dos módulos com:
+- `GEMINI_API_KEY`
+- `GEMINI_MODEL` (opcional, padrão: `gemini-2.0-flash`)
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL` (opcional, padrão: `gpt-4o-mini`)
 
-```pwsh
+### Prioridade dos provedores
+
+No core, a ordem de tentativa é:
+
+1. Gemini
+2. OpenAI
+
+Se nenhuma chave estiver configurada, ou se a chamada ao LLM falhar, a aplicação continua funcionando com as **heurísticas locais**.
+
+## Heurísticas implementadas
+
+Atualmente o projeto detecta, entre outros padrões:
+
+- `TODO` e `FIXME`
+- credenciais hardcoded
+- uso de `eval` e `exec`
+- SQL possivelmente vulnerável a injeção
+- `except` genérico
+- funções muito longas
+- `print` em Python
+- divisão por zero
+- acesso inválido a coleção vazia
+- argumento mutável como valor default
+- uso incorreto de `is`
+- comparação com `None` usando `==`
+- variável não utilizada
+- `while True` sem saída aparente
+- uso incorreto de retorno `None`
+- placeholders inconsistentes em `.format()`
+- uso de módulos sem import
+- arquivo aberto sem `with`
+- `var`, `==` e `console.log` em JavaScript/TypeScript
+- erro ignorado em Go
+
+Linguagens previstas na interface:
+
+- Python
+- JavaScript
+- TypeScript
+- Go
+
+## Blueprint e governança
+
+O arquivo [`blueprint.md`](/home/maxmelodia/PUC/IA/code-review-ai-agent/blueprint.md) é parte central do projeto. Ele não é apenas documentação: ele define regras que são lidas e aplicadas em tempo de execução por [`validators.py`](/home/maxmelodia/PUC/IA/code-review-ai-agent/validators.py).
+
+### O que o blueprint controla
+
+- severidades válidas
+- categorias permitidas
+- quantidade máxima de achados
+- formato esperado da resposta do LLM
+- regras de conteúdo e priorização
+
+### Metadados lidos automaticamente
+
+No topo do blueprint existem metadados em comentário HTML:
+
+```html
+<!-- blueprint:severity-levels=Critical,High,Medium,Low,Info -->
+<!-- blueprint:max-findings=5 -->
+<!-- blueprint:required-categories=bug-risk,security,best-practice -->
+```
+
+Esses valores são carregados automaticamente pela função `load_blueprint_rules()`.
+
+### Efeito prático na análise
+
+- Achados fora das categorias permitidas são descartados.
+- Achados com severidade inválida são rejeitados na validação.
+- O total final é limitado por `max-findings`.
+- O relatório inclui um bloco de governança com `is_compliant`, `issues` e `limits`.
+
+### Troca do blueprint
+
+Na interface, o usuário pode informar outro caminho no campo `Blueprint`. Se o arquivo não existir, a aplicação exibe erro.
+
+## Como usar a interface
+
+### Modo Arquivo único
+
+- Cole código diretamente no campo de texto; ou
+- envie um arquivo `.py`, `.js`, `.ts`, `.go` ou `.yaml`
+
+A interface mostra:
+
+- o código com destaque nas linhas problemáticas
+- os achados filtráveis por severidade e categoria
+- estatísticas do arquivo
+- próximos passos
+- exportação do relatório
+
+### Modo Múltiplos arquivos (PR)
+
+- Envie vários arquivos de uma vez
+- Cada arquivo é analisado individualmente
+- O app consolida o resultado em um resumo geral do PR
+
+## Estrutura do relatório
+
+O core expõe duas entradas principais:
+
+- `analyze_code_snippet(...)`
+- `analyze_pull_request(...)`
+
+O relatório de arquivo único retorna um `AnalysisReport` com:
+
+- `summary`
+- `findings`
+- `governance`
+- `statistics`
+- `next_steps`
+
+Também existe exportação em Markdown com `report.to_markdown()` e em dicionário com `report.to_dict()`.
+
+## Testes
+
+Para executar os testes:
+
+```bash
 pytest
 ```
 
-> Caso ainda não existam testes personalizados, o comando conferirá se os arquivos podem ser importados corretamente.
+Os testes atuais cobrem cenários básicos do core, incluindo:
 
-## Próximos passos
+- detecção de `TODO`
+- conformidade com a governança
+- comportamento quando não há problemas relevantes
 
-- Integrar um LLM (OpenAI ou similar) para gerar insights mais sofisticados usando o `AnalysisReport` como contexto fixo.
-- Adicionar Docker/Docker Compose para facilitar execuções em laboratório.
-- Conectar a ferramenta a um repositório Git real para analisar diffs automaticamente.
+## Comportamentos importantes do projeto
+
+- O app funciona mesmo sem LLM, usando apenas heurísticas.
+- O campo `reference` dos achados é preenchido com o nome do arquivo quando disponível.
+- Quando não há achados, o core adiciona uma observação informativa ao relatório.
+- Os próximos passos são gerados com base nas categorias encontradas.
+
+## O que foi removido desta documentação
+
+As instruções antigas usando apenas `API_KEY` foram removidas porque **não correspondem ao código atual**. Hoje o projeto espera explicitamente `GEMINI_API_KEY` e/ou `OPENAI_API_KEY`.

@@ -1,33 +1,91 @@
+# =========================
 # Python
+# =========================
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
 *.pyd
+*.pyc.*
 
-# Virtual environment
+# =========================
+# Virtual environments
+# =========================
 venv/
-.env/
+.venv/
+env/
+ENV/
 
+# =========================
 # Environment variables
+# =========================
 .env
+.env.*
 
+# =========================
+# Streamlit
+# =========================
+.streamlit/
+credentials.toml
+
+# =========================
 # Logs
+# =========================
 *.log
 
-# OS
+# =========================
+# OS / System files
+# =========================
 .DS_Store
 Thumbs.db
 
-# VS Code
-.vscode/
+# Linux / WSL
+.dbus/
 
-# Terraform (caso usem depois)
+# =========================
+# IDEs / Editors
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# Tests / Coverage
+# =========================
+.coverage
+htmlcov/
+.pytest_cache/
+
+# =========================
+# Build / Distribution
+# =========================
+build/
+dist/
+*.egg-info/
+
+# =========================
+# Jupyter
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# Terraform
+# =========================
 .terraform/
 *.tfstate
 *.tfstate.backup
 
-# Docker
+# =========================
+# Docker / Runtime
+# =========================
 *.pid
 
-# Misc
+# =========================
+# Secrets / Keys
+# =========================
+secrets.*
+*.pem
+*.key
+
+# =========================
+# Database / Misc
+# =========================
 *.sqlite3
