@@ -1,6 +1,14 @@
 # PR Review AI Agent
 
-Projeto acadêmico da disciplina **IA Generativa para Engenharia de Software**. A aplicação oferece uma interface em Streamlit para revisar trechos de código ou um conjunto de arquivos simulando um Pull Request, combinando heurísticas locais, validação por regras de governança e apoio opcional de LLM.
+Projeto acadêmico da disciplina **IA Generativa para Engenharia de Software**. 
+
+Desenvolvido por:
+- Mateus Luiz Brito Pereira
+- Maxwell Roberto Duarte
+- Wellington Severino da Silva
+
+
+A aplicação oferece uma interface em Streamlit para revisar trechos de código ou um conjunto de arquivos simulando um Pull Request, combinando heurísticas locais, validação por regras de governança e apoio opcional de LLM.
 
 ## Objetivo
 

@@ -1,5 +1,5 @@
 <!-- blueprint:severity-levels=Critical,High,Medium,Low,Info -->
-<!-- blueprint:max-findings=5 -->
+<!-- blueprint:max-findings=2-->
 <!-- blueprint:required-categories=bug-risk,security,best-practice -->
 
 # Blueprint — PR Review AI Agent
